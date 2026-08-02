@@ -1,6 +1,7 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+const UPLOAD_PAGE = require("./upload");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -124,6 +125,11 @@ app.put("/api/asset/:name", (req, res) => {
   }
 });
 
+app.get("/upload", (req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.type("html").send(UPLOAD_PAGE);
+});
+
 function serveAsset(name, res, next) {
   const meta = ASSETS[name];
   if (!hasAsset(name)) return next();
@@ -148,8 +154,9 @@ app.get("*", (req, res, next) => {
           "<title>Tréningový plán</title></head>" +
           '<body style="margin:0;background:#0e1116;color:#e6edf3;font:16px/1.5 system-ui,sans-serif;' +
           'display:flex;align-items:center;justify-content:center;height:100vh;text-align:center">' +
-          "<div><h1 style=\"font-size:19px;margin:0 0 8px\">Plán sa ešte nenahral</h1>" +
-          '<p style="color:#93a1b0;font-size:14px;margin:0">Obsah nie je na disku. Nahraj ho cez /api/asset/index.html</p>' +
+          '<div><h1 style="font-size:19px;margin:0 0 8px">Plán sa ešte nenahral</h1>' +
+          '<p style="color:#93a1b0;font-size:14px;margin:0 0 14px">Obsah zatiaľ nie je na disku.</p>' +
+          '<a href="/upload" style="color:#4da3ff;font-size:14px">Nahrať obsah →</a>' +
           "</div></body></html>"
       );
   });
