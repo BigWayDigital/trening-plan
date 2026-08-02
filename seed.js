@@ -16,7 +16,10 @@ const MANIFEST = {
   background_color: "#0e1116",
   theme_color: "#0e1116",
   orientation: "portrait",
-  icons: [{ src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any" }]
+  icons: [
+    { src: "/icon.png", sizes: "192x192", type: "image/png", purpose: "any" },
+    { src: "/icon.png", sizes: "192x192", type: "image/png", purpose: "maskable" }
+  ]
 };
 
 function joinParts(prefix) {
@@ -43,8 +46,7 @@ function seed(name, buf) {
   try {
     previous = fs.readFileSync(marker, "utf8").trim();
   } catch (e) {}
-  const exists = fs.existsSync(target);
-  if (exists && previous === hash) {
+  if (fs.existsSync(target) && previous === hash) {
     console.log("seed: " + name + " je aktuálny, preskakujem");
     return;
   }
