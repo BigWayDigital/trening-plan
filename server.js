@@ -130,12 +130,38 @@ app.get("/upload", (req, res) => {
   res.type("html").send(UPLOAD_PAGE);
 });
 
+const cache = new Map();
+
+function readAsset(name) {
+  const file = assetPath(name);
+  let st;
+  try {
+    st = fs.statSync(file);
+  } catch (e) {
+    return null;
+  }
+  if (!st.size) return null;
+  const key = st.mtimeMs + ":" + st.size;
+  const hit = cache.get(name);
+  if (hit && hit.key === key) return hit.buf;
+  let buf;
+  try {
+    buf = fs.readFileSync(file);
+  } catch (e) {
+    console.error("citanie " + name + " zlyhalo:", e.message);
+    return hit ? hit.buf : null;
+  }
+  cache.set(name, { key, buf });
+  return buf;
+}
+
 function serveAsset(name, res, next) {
   const meta = ASSETS[name];
-  if (!hasAsset(name)) return next();
+  const buf = readAsset(name);
+  if (!buf) return next();
   res.set("Content-Type", meta.type);
   res.set("Cache-Control", meta.cache);
-  fs.createReadStream(assetPath(name)).pipe(res);
+  res.send(buf);
 }
 
 app.get("/manifest.json", (req, res, next) => serveAsset("manifest.json", res, next));
@@ -162,6 +188,28 @@ app.get("*", (req, res, next) => {
   });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
+app.use((err, req, res, next) => {
+  console.error("request zlyhal:", req.method, req.path, err.message);
+  if (res.headersSent) return next(err);
+  const bad = err.type === "entity.parse.failed" || err.status === 400;
+  const tooBig = err.type === "entity.too.large" || err.status === 413;
+  if (bad) return res.status(400).json({ error: "invalid body" });
+  if (tooBig) return res.status(413).json({ error: "body too large" });
+  res.status(500).json({ error: "server error" });
+});
+
+process.on("uncaughtException", err => {
+  console.error("uncaughtException:", err && err.stack ? err.stack : err);
+});
+
+process.on("unhandledRejection", err => {
+  console.error("unhandledRejection:", err && err.stack ? err.stack : err);
+});
+
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log("trening beží na porte " + PORT + ", data: " + DATA_DIR);
+});
+
+server.on("error", err => {
+  console.error("server error:", err.message);
 });
